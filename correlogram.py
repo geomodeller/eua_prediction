@@ -1,7 +1,27 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-def Compute_cross_correlation(df_all:pd.DataFrame,
+
+def visual_all_cross_correlogram(df_all:pd.DataFrame,
+                                 col1:str,
+                                 col2_lst:list[str],
+                                 total_lag:int):
+    plt.figure(figsize = (10, 3*len(col2_lst)))
+    for j, col2 in enumerate(col2_lst):
+        corss_corr = []
+        for lag in range(1,total_lag):
+            tail = []
+            head = []
+            for i in range(len(df_all)-lag):
+                head.append(df_all.loc[i    , col1])
+                tail.append(df_all.loc[i+lag, col2])
+            corss_corr.append(np.corrcoef(head, tail)[0][1])
+        plt.subplot(len(col2_lst), 1, j+1)
+        plt.plot(range(1,total_lag), corss_corr)
+        plt.title(f'{col1} vs. {col2}')
+        plt.grid('on')
+
+def compute_cross_correlation(df_all:pd.DataFrame,
                               col1:str,
                               col2:str,
                               total_lag: int = 60,
@@ -31,7 +51,7 @@ def Compute_cross_correlation(df_all:pd.DataFrame,
             tail.append(df_all.loc[i+lag, col2])
         corss_corr.append(np.corrcoef(head, tail)[0][1])
     if visual_output:
-        plt.plot(range(1,60), corss_corr)
+        plt.plot(range(1,total_lag), corss_corr)
         plt.grid('on')
     if return_corr:
         return np.array(corss_corr)
