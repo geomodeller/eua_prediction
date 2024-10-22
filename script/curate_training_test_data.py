@@ -1,7 +1,8 @@
 
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from create_sequences import create_sequences
+from script.create_sequences import create_sequences
+
 def curate_training_test_data(df_all, Date_col_name = 'Date',
                               sequence_length = 7, 
                               test_date= '2024-07-01', 
