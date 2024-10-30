@@ -67,11 +67,13 @@ def curate_training_test_data(df_all: pd.DataFrame,
 
 
 def curate_training_test_data_many(df_all, Date_col_name = 'Date',
-                              sequence_length_input = 7,
-                              sequence_length_out = 7, 
-                              test_date= '2024-07-01', 
-                              flatten = False,
-                              predictors_lst = ['EUA', 'Oil', 'Coal', 'NG', 'USEU', 'S&P_clean', 'DAX']):
+                                    sequence_length_input = 7,
+                                    sequence_length_out = 7, 
+                                    test_date= '2024-07-01', 
+                                    flatten = False,
+                                    predictors_lst = ['EUA', 'Oil', 'Coal', 'NG', 'USEU', 'S&P_clean', 'DAX'],
+                                    dtype = 'float32',
+                                    is_test_split = True):
     """
     Curate the training and test data, given the dataframe containing the time series data (df_all),
     the column name of the date in the dataframe (Date_col_name), the sequence length for the input data (sequence_length_input),
@@ -103,17 +105,30 @@ def curate_training_test_data_many(df_all, Date_col_name = 'Date',
     test_date = pd.to_datetime(test_date)
 
     test_overlap_time = pd.to_timedelta(sequence_length_input+1, unit = 'day')
+    if is_test_split:
+        df_train = df_all[df_all[Date_col_name] < test_date].reset_index(drop=True)
+        df_test  = df_all[df_all[Date_col_name] > test_date - test_overlap_time].reset_index(drop=True)
 
-    df_train = df_all[df_all[Date_col_name] < test_date].reset_index(drop=True)
-    df_test  = df_all[df_all[Date_col_name] > test_date - test_overlap_time].reset_index(drop=True)
+        train_data = df_train[predictors_lst].values 
+        test_data  = df_test[predictors_lst].values
+        scaler = StandardScaler()
+        scaler.fit(train_data)
 
-    train_data = df_train[predictors_lst].values 
-    test_data  = df_test[predictors_lst].values
-    scaler = StandardScaler()
-    scaler.fit(train_data)
+        train_data_scaled = scaler.transform(train_data)
+        test_data_scaled  = scaler.transform(test_data)
+        X_train, y_train = create_sequences_many(train_data_scaled, sequence_length_input, sequence_length_out, flatten = flatten,
+                                                dtype = dtype) # LSTM should be flatten = False
+        X_test, y_test = create_sequences_many(test_data_scaled, sequence_length_input, sequence_length_out, flatten = flatten,
+                                            dtype= dtype)
+        
+    else:
+        df_train = df_all
 
-    train_data_scaled = scaler.transform(train_data)
-    test_data_scaled  = scaler.transform(test_data)
-    X_train, y_train = create_sequences_many(train_data_scaled, sequence_length_input, sequence_length_out, flatten = flatten) # LSTM should be flatten = False
-    X_test, y_test = create_sequences_many(test_data_scaled, sequence_length_input, sequence_length_out, flatten = flatten)
+        train_data = df_train[predictors_lst].values 
+        scaler = StandardScaler()
+        scaler.fit(train_data)
+        train_data_scaled = scaler.transform(train_data)
+        X_train, y_train = create_sequences_many(train_data_scaled, sequence_length_input, sequence_length_out, flatten = flatten,
+                                                dtype = dtype) # LSTM should be flatten = False
+        X_test, y_test = None, None
     return X_train, y_train, X_test, y_test, scaler

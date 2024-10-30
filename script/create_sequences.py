@@ -24,7 +24,8 @@ def create_sequences(data: np.array, seq_length: int, flatten = False):
 def create_sequences_many(data: np.array, 
                            seq_length_input: int=3, 
                            seq_length_out: int=3, 
-                           flatten: bool = False):
+                           flatten: bool = False,
+                           dtype  = 'float16'):
     
     """
     시계열 데이터를 입력(X)과 출력(y)으로 나누는 함수.
@@ -47,6 +48,6 @@ def create_sequences_many(data: np.array,
     if flatten:
         X = np.array(X)
         y = np.array(y)
-        return X.reshape(X.shape[0],-1).astype('float16'), y.reshape(y.shape[0],-1).astype('float16')
+        return X.reshape(X.shape[0],-1).astype(dtype), y.reshape(y.shape[0],-1).astype(dtype)
     else:
-        return np.array(X).astype('float16'), np.array(y).astype('float16')
+        return np.array(X).astype(dtype), np.array(y).astype(dtype)
