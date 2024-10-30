@@ -5,7 +5,8 @@ import pandas as pd
 def visual_all_cross_correlogram(df_all:pd.DataFrame,
                                  col1:str,
                                  col2_lst:list[str],
-                                 total_lag:int):
+                                 total_lag:int,
+                                 vline = None):
     plt.figure(figsize = (10, 3*len(col2_lst)))
     for j, col2 in enumerate(col2_lst):
         corss_corr = []
@@ -20,6 +21,8 @@ def visual_all_cross_correlogram(df_all:pd.DataFrame,
         plt.plot(range(1,total_lag), corss_corr)
         plt.title(f'{col1} vs. {col2}')
         plt.grid('on')
+        if vline is not None:
+            plt.axvline(x = vline, color = 'red')
 
 def compute_cross_correlation(df_all:pd.DataFrame,
                               col1:str,
