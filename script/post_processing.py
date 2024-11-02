@@ -169,6 +169,57 @@ def resursive_furture_prediction_with_dropout(model,
 
     return future_price_ensemble, future_time
 
+
+def resursive_furture_prediction_with_dropout_in_cpu(model, 
+                                            last_price_all: torch.Tensor, 
+                                            num_of_ensemble = 10,
+                                            future_period: int = 12, 
+                                            input_data_time_length: int = 28,
+                                            scaler: None | StandardScaler = None,
+                                            train_test_split_date = None, 
+                                            df_all = None,
+                                            return_contious_array:bool = True):
+    """
+    Recursive future prediction with dropout.
+
+    Parameters:
+    model (nn.Module): The model to make predictions.
+    last_price_all (torch.Tensor): The last price data as input to the model.
+    num_of_ensemble (int): Number of ensembles to generate. Defaults to 10.
+    future_period (int): The number of days to predict in the future. Defaults to 12.
+    input_data_time_length (int): The length of the input data. Defaults to 28.
+    add_scaler_inversion (bool): Whether to apply inverse scaler to the predictions. Defaults to True.
+    train_test_split_date (pd.Timestamp or None): The date to split the data into training and testing sets. Defaults to None.
+    df_all (pd.DataFrame or None): The dataframe containing all the data. Defaults to None.
+
+    Returns:
+    future_price (list): A list of numpy arrays, each of which contains the predicted EUA prices for a future period.
+    future_time (list or None): A list of lists of dates, each of which contains the dates for a future period. If train_test_split_date or df_all is None, it returns None.
+    """
+    model.to('cpu')
+    future_price_ensemble = []
+    for real in range(num_of_ensemble):
+        future_price = []
+        for iter in range(future_period):
+            if iter == 0:
+                next_price = model(last_price_all.reshape(1,input_data_time_length,-1).cpu())
+            else:
+                next_price = model(next_price)
+            future_price.append(next_price.detach().numpy())
+        if scaler is not None:
+            future_price = inverse_scaler_of_all_var(future_price, scaler)
+        future_price_ensemble.append(future_price)    
+    if any((train_test_split_date is None, df_all is None)):
+        future_time = None
+    else:
+        future_time = [[train_test_split_date + pd.to_timedelta(j, 'day') + pd.to_timedelta(input_data_time_length*i, 'day') for j in range(input_data_time_length)] for i in range(future_period)]
+    
+    if return_contious_array:
+        future_price_ensemble = np.array(future_price_ensemble).reshape(num_of_ensemble, -1, scaler.n_features_in_)
+        future_time = np.array(future_time).flatten()
+
+    return future_price_ensemble, future_time
+
 def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.ndarray],
                                           y_test_pred: np.ndarray,
                                           train_start_date: pd.Timestamp,
@@ -279,3 +330,84 @@ def visual_recursive_future_prediction(future_time, future_price_ensemble,
     if 'grid' in decoration:
         plt.grid(decoration['grid'])
     plt.legend()
+    # Enable minor ticks and grid
+    plt.minorticks_on()
+    plt.tick_params(axis='both', which='minor', length=4, width=1, color='gray')
+    
+    # Add minor grid
+    plt.grid(which='minor', linestyle=':', linewidth=0.5, color='gray')
+
+
+import plotly.graph_objects as go
+import numpy as np
+import pandas as pd
+
+def visual_recursive_future_prediction_plotly(future_time, future_price_ensemble,
+                                              train_test_split_date: pd.Timestamp,
+                                              df_all: pd.DataFrame,
+                                              index_of_data: int = 0, # 0 is EUA price
+                                              name_of_data: str = 'EUA',
+                                              alpha: float = 0.3,
+                                              decoration: dict = {},
+                                              add_ensemble: bool = True):
+    # Create figure
+    fig = go.Figure()
+
+    if add_ensemble:
+        # Plot future predictions ensemble
+        for i in range(future_price_ensemble.shape[0]):
+            fig.add_trace(go.Scatter(
+                x=future_time,
+                y=future_price_ensemble[i, :, index_of_data],
+                mode='lines',
+                line=dict(color='gray', width=1),
+                opacity=alpha,
+                showlegend=False  # Hide individual lines from legend
+            ))
+
+    # Plot percentile lines (P50, P10, P90)
+    p50 = np.percentile(future_price_ensemble[:, :, index_of_data], 50, axis=0)
+    p10 = np.percentile(future_price_ensemble[:, :, index_of_data], 10, axis=0)
+    p90 = np.percentile(future_price_ensemble[:, :, index_of_data], 90, axis=0)
+
+    fig.add_trace(go.Scatter(x=future_time, y=p50, mode='lines', line=dict(color='orange'), name='P50'))
+    fig.add_trace(go.Scatter(x=future_time, y=p10, mode='lines', line=dict(color='green'), opacity=alpha, name='P10'))
+    fig.add_trace(go.Scatter(x=future_time, y=p90, mode='lines', line=dict(color='green'), opacity=alpha, name='P90'))
+
+    # Plot historical data (train and validation)
+    fig.add_trace(go.Scatter(
+        x=df_all[df_all['Date'] < train_test_split_date]['Date'],
+        y=df_all[df_all['Date'] < train_test_split_date][name_of_data],
+        mode='lines',
+        line=dict(color='red'),
+        name='History (train)'
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=df_all[df_all['Date'] > train_test_split_date]['Date'],
+        y=df_all[df_all['Date'] > train_test_split_date][name_of_data],
+        mode='lines',
+        line=dict(color='blue'),
+        name='History (validation)'
+    ))
+
+    # Customize layout
+    fig.update_layout(
+        xaxis=dict(
+            title=decoration.get('xlabel', ''),
+            showgrid=True,
+            gridcolor='lightgray',
+            minor=dict(ticks="outside")  # Minor ticks on x-axis
+        ),
+        yaxis=dict(
+            title=decoration.get('ylabel', ''),
+            showgrid=True,
+            gridcolor='lightgray',
+            minor=dict(ticks="outside")  # Minor ticks on y-axis
+        ),
+        title=decoration.get('title', ''),
+        showlegend=False  # Disable the legend
+    )
+
+    # Show the plot
+    fig.show()
