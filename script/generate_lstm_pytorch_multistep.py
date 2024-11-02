@@ -98,12 +98,9 @@ def train_lstm_multi_step(model, checkpoint_path, X_train, y_train, epochs=100, 
             if patience_counter >= patience:
                 print("Early stopping")
                 break
-
+        if epoch+1%100 ==0:
+            torch.save(model.state_dict(), os.path.splitext(checkpoint_path)[0]+f'_epoch_{epoch:05}.pth')
         scheduler.step()
-
-    with open(f"{os.path.splitext(checkpoint_path)[0]}.pkl", "wb") as f:
-        pickle.dump({"val_loss": best_loss}, f)
-    return history
 
 # Example usage:
 # X_train, y_train are assumed to be preprocessed and loaded as torch tensors

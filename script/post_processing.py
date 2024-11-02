@@ -81,7 +81,8 @@ def resursive_furture_prediction(model,
                                  future_period: int = 12, 
                                  input_data_time_length: int = 28,
                                  scaler: None | StandardScaler = None,
-                                 train_test_split_date = None, df_all = None,):
+                                 train_test_split_date = None, df_all = None,
+                                 return_contious_array:bool = True):
     """
     This function predicts the future EUA prices by recursively applying the provided model on the last input data.
 
@@ -112,6 +113,11 @@ def resursive_furture_prediction(model,
         future_time = None
     else:
         future_time = [[train_test_split_date + pd.to_timedelta(j, 'day') + pd.to_timedelta(input_data_time_length*i, 'day') for j in range(input_data_time_length)] for i in range(future_period)]
+    
+    if return_contious_array:
+        future_price = np.array(future_price).reshape(-1, scaler.n_features_in_)
+        future_time = np.array(future_time).flatten()
+    
     return future_price, future_time
 
 def resursive_furture_prediction_with_dropout(model, 
@@ -121,7 +127,8 @@ def resursive_furture_prediction_with_dropout(model,
                                             input_data_time_length: int = 28,
                                             scaler: None | StandardScaler = None,
                                             train_test_split_date = None, 
-                                            df_all = None):
+                                            df_all = None,
+                                            return_contious_array:bool = True):
     """
     Recursive future prediction with dropout.
 
@@ -155,6 +162,11 @@ def resursive_furture_prediction_with_dropout(model,
         future_time = None
     else:
         future_time = [[train_test_split_date + pd.to_timedelta(j, 'day') + pd.to_timedelta(input_data_time_length*i, 'day') for j in range(input_data_time_length)] for i in range(future_period)]
+    
+    if return_contious_array:
+        future_price_ensemble = np.array(future_price_ensemble).reshape(num_of_ensemble, -1, scaler.n_features_in_)
+        future_time = np.array(future_time).flatten()
+
     return future_price_ensemble, future_time
 
 def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.ndarray],
@@ -228,4 +240,42 @@ def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.nda
     if 'grid' in decoration:
         plt.grid(decoration['grid'])
         
+    plt.legend()
+    
+    
+def visual_recursive_future_prediction(future_time, future_price_ensemble,
+                                       train_test_split_date: pd.Timestamp,
+                                       df_all: pd.DataFrame,
+                                          figsize: tuple = (15,5),
+                                          index_of_data: int = 0, # 0 is EUA price
+                                          name_of_data: str = 'EUA',
+                                          alpha: float = 0.3,
+                                          decoration: dict = {},
+                                          ):
+    plt.figure(figsize = figsize)
+        
+    plt.plot(future_time, future_price_ensemble[0,:,index_of_data].T, 'gray', alpha =  alpha, label ='future prediction');
+    plt.plot(future_time, future_price_ensemble[:,:,index_of_data].T, 'gray', alpha =  alpha);
+    
+    p50 = np.percentile(future_price_ensemble[:,:,index_of_data], 50, axis =0)
+    plt.plot(future_time, p50, color = 'orange', label = 'P50');
+    p10 = np.percentile(future_price_ensemble[:,:,index_of_data], 10, axis =0)
+    p90 = np.percentile(future_price_ensemble[:,:,index_of_data], 90, axis =0)
+    plt.plot(future_time, p10, 'green', label = 'P10/P90', alpha = alpha);
+    plt.plot(future_time, p90, 'green', alpha = alpha);
+    
+    plt.plot(df_all[df_all['Date']<train_test_split_date]['Date'], 
+            df_all[df_all['Date']<train_test_split_date][name_of_data],
+            '-r', label = 'history (train)')
+    plt.plot(df_all[df_all['Date']>train_test_split_date]['Date'], 
+            df_all[df_all['Date']>train_test_split_date][name_of_data],
+            '-b', label = 'history (validation)')
+    if 'xlabel' in decoration:
+        plt.xlabel(decoration['xlabel'])
+    if 'ylabel' in decoration:
+        plt.ylabel(decoration['ylabel'])
+    if 'title' in decoration:
+        plt.title(decoration['title'])
+    if 'grid' in decoration:
+        plt.grid(decoration['grid'])
     plt.legend()
