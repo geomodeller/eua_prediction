@@ -3,6 +3,8 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import torch
+import matplotlib.pyplot as plt
+
 
 def inverse_scaler_of_all_var(scaled_data: np.ndarray|list[np.ndarray], 
                        scaler: StandardScaler)->np.ndarray|list:
@@ -155,8 +157,6 @@ def resursive_furture_prediction_with_dropout(model,
         future_time = [[train_test_split_date + pd.to_timedelta(j, 'day') + pd.to_timedelta(input_data_time_length*i, 'day') for j in range(input_data_time_length)] for i in range(future_period)]
     return future_price_ensemble, future_time
 
-import matplotlib.pyplot as plt
-
 def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.ndarray],
                                           y_test_pred: np.ndarray,
                                           train_start_date: pd.Timestamp,
@@ -164,12 +164,30 @@ def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.nda
                                           df_all: pd.DataFrame,
                                           figsize: tuple = (15,5),
                                           index_of_data: int = 0, # 0 is EUA price
+                                          name_of_data: str = 'EUA',
                                           alpha: float = 0.3,
                                           train_color: str = 'gray',
                                           test_color: str = 'gray',
                                           decoration: dict = {},
                                           input_data_time_length: int = 28,
                                           ):
+    """
+    Visualize the predictions on training and validation datasets.
+
+    Parameters:
+    y_train_pred (np.ndarray or list of np.ndarray): The predicted values on the training dataset.
+    y_test_pred (np.ndarray): The predicted values on the validation dataset.
+    train_start_date (pd.Timestamp): The start date of the training dataset.
+    train_test_split_date (pd.Timestamp): The date to split the data into training and validation sets.
+    df_all (pd.DataFrame): The dataframe containing all the data.
+    figsize (tuple, optional): The size of the figure. Defaults to (15,5).
+    index_of_data (int, optional): The index of the data to plot. Defaults to 0.
+    alpha (float, optional): The alpha value of the plot. Defaults to 0.3.
+    train_color (str, optional): The color of the training data. Defaults to 'gray'.
+    test_color (str, optional): The color of the test data. Defaults to 'gray'.
+    decoration (dict, optional): A dictionary containing additional plot decorations. Defaults to {}.
+    input_data_time_length (int, optional): The length of the input data. Defaults to 28.
+    """
     plt.figure(figsize = figsize)
     plt.axvline(x = train_test_split_date, color = 'purple', label = 'train/valid split')
     for i in range(y_train_pred.shape[0]):
@@ -196,10 +214,10 @@ def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.nda
             _ = [plt.plot(x_val, y_test_pred[j][i,:,index_of_data],color =test_color, alpha =alpha) for j in range(len(y_test_pred))]
 
     plt.plot(df_all[df_all['Date']<train_test_split_date]['Date'], 
-            df_all[df_all['Date']<train_test_split_date]['EUA'],
+            df_all[df_all['Date']<train_test_split_date][name_of_data],
             '-r', label = 'history')
     plt.plot(df_all[df_all['Date']>train_test_split_date]['Date'], 
-            df_all[df_all['Date']>train_test_split_date]['EUA'],
+            df_all[df_all['Date']>train_test_split_date][name_of_data],
             '-b', label = 'future')
     if 'xlabel' in decoration:
         plt.xlabel(decoration['xlabel'])
@@ -208,6 +226,6 @@ def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.nda
     if 'title' in decoration:
         plt.title(decoration['title'])
     if 'grid' in decoration:
-        plt.title(decoration['grid'])
+        plt.grid(decoration['grid'])
         
     plt.legend()
