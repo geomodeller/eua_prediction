@@ -325,10 +325,10 @@ def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.nda
 
     plt.plot(df_all[df_all['Date']<train_test_split_date]['Date'], 
             df_all[df_all['Date']<train_test_split_date][name_of_data],
-            '-r', label = 'history')
+            '-r', label = 'training data')
     plt.plot(df_all[df_all['Date']>train_test_split_date]['Date'], 
             df_all[df_all['Date']>train_test_split_date][name_of_data],
-            '-b', label = 'future')
+            '-b', label = 'validation data')
     if 'xlabel' in decoration:
         plt.xlabel(decoration['xlabel'])
     if 'ylabel' in decoration:
