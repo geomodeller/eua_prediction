@@ -54,13 +54,13 @@ def train_lstm_multi_step(model, checkpoint_path, X_train, y_train, epochs=100, 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
-    optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-5)
+    optimizer = optim.AdamW(model.parameters(), lr=0.0001, weight_decay=1e-5)
     criterion = nn.MSELoss()
-    scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 1)  # Adjust lambda function as needed
+    scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.995**epoch)  # Adjust lambda function as needed
 
     best_loss = float('inf')
     patience_counter = 0
-
+    flag = 0
     history = {'train_loss':[],'val_loss':[]}
     for epoch in range(epochs):
         model.train()
@@ -89,19 +89,23 @@ def train_lstm_multi_step(model, checkpoint_path, X_train, y_train, epochs=100, 
         if verbose:
             print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {train_loss / len(train_loader)}, Val Loss: {val_loss}")
             
-        if val_loss < best_loss:
+        if (val_loss < best_loss) and (epoch > 0):
             best_loss = val_loss
             patience_counter = 0
             torch.save(model.state_dict(), checkpoint_path)
+            print(f'flag == {flag}')
+            print(f"Epoch {epoch + 1}/{epochs}, Train Loss: {train_loss / len(train_loader)}, Val Loss: {val_loss}")
+            flag += 1
         else:
             patience_counter += 1
             if patience_counter >= patience:
                 print("Early stopping")
                 break
-        if epoch+1%100 ==0:
-            torch.save(model.state_dict(), os.path.splitext(checkpoint_path)[0]+f'_epoch_{epoch:05}.pth')
+        # if (epoch+1)%50 ==0:
+        #     torch.save(model.state_dict(), os.path.splitext(checkpoint_path)[0]+f'_epoch_{epoch:05}.pth')
+    
         scheduler.step()
-
+    return history
 # Example usage:
 # X_train, y_train are assumed to be preprocessed and loaded as torch tensors
 # checkpoint_path = "./checkpoint.pth"

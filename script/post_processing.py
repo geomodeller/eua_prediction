@@ -172,6 +172,8 @@ def resursive_furture_prediction_with_dropout(model,
     return future_price_ensemble, future_time
 
 
+
+
 def resursive_furture_prediction_with_dropout_in_cpu(model, 
                                             last_price_all: torch.Tensor, 
                                             num_of_ensemble = 10,
@@ -215,6 +217,42 @@ def resursive_furture_prediction_with_dropout_in_cpu(model,
                 else:
                     next_price = model(next_price.reshape(1,-1).repeat(2,1))[0]
             future_price.append(next_price.detach().numpy())
+        if scaler is not None:
+            future_price = inverse_scaler_of_all_var(future_price, scaler)
+        future_price_ensemble.append(future_price)    
+    if any((train_test_split_date is None, df_all is None)):
+        future_time = None
+    else:
+        future_time = [[train_test_split_date + pd.to_timedelta(j, 'day') + pd.to_timedelta(input_data_time_length*i, 'day') for j in range(input_data_time_length)] for i in range(future_period)]
+    
+    if return_contious_array:
+        future_price_ensemble = np.array(future_price_ensemble).reshape(num_of_ensemble, -1, scaler.n_features_in_)
+        future_time = np.array(future_time).flatten()
+
+    return future_price_ensemble, future_time
+
+
+
+def resursive_furture_prediction_in_sklearn(model, 
+                                            last_price_all: np.ndarray, 
+                                            num_of_ensemble = 10,
+                                            future_period: int = 12, 
+                                            input_data_time_length: int = 28,
+                                            scaler: None | StandardScaler = None,
+                                            train_test_split_date = None, 
+                                            df_all = None,
+                                            return_contious_array:bool = True,
+                                            flatten: bool = False):
+
+    future_price_ensemble = []
+    for real in range(num_of_ensemble):
+        future_price = []
+        for iter in range(future_period):
+            if iter == 0:
+                next_price = model.predict(last_price_all.reshape(1,-1))
+            else:
+                next_price =  model.predict(next_price.reshape(1,-1))
+            future_price.append(next_price)
         if scaler is not None:
             future_price = inverse_scaler_of_all_var(future_price, scaler)
         future_price_ensemble.append(future_price)    
@@ -299,7 +337,15 @@ def visual_train_n_valid_data_performance(y_train_pred: np.ndarray | list[np.nda
         plt.title(decoration['title'])
     if 'grid' in decoration:
         plt.grid(decoration['grid'])
-        
+    
+    # Enable minor ticks and grid
+    plt.minorticks_on()
+    plt.tick_params(axis='both', which='minor', length=4, width=1, color='gray')
+    
+    # Add minor grid
+    plt.grid(which='minor', linestyle=':', linewidth=0.5, color='gray')
+
+
     plt.legend()
     
     
