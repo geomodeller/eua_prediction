@@ -16,23 +16,47 @@ class NeuralNetwork(nn.Module):
         
         # Define layers
         self.model = nn.Sequential(
-            nn.Linear(input_dim, 128),
+            nn.Linear(input_dim, 512),
             nn.ReLU(),
-            nn.BatchNorm1d(128),
+            nn.BatchNorm1d(512),
             nn.Dropout(0.1),
             
-            nn.Linear(128, 256),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.BatchNorm1d(256),
+            nn.BatchNorm1d(512),
             nn.Dropout(0.1),
             
-            nn.Linear(256, 512),
+            nn.Linear(512, 512),
             nn.ReLU(),
             nn.LayerNorm(512),  # Layer normalization instead of batch norm for the last layer
             
             nn.Linear(512, output_dim),
             # nn.LeakyReLU(0.1)  # LeakyReLU for output regression flexibility
         )
+
+# class NeuralNetwork(nn.Module):
+#     def __init__(self, input_dim, output_dim):
+#         super(NeuralNetwork, self).__init__()
+        
+#         # Define layers
+#         self.model = nn.Sequential(
+#             nn.Linear(input_dim, 128),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(128),
+#             nn.Dropout(0.1),
+            
+#             nn.Linear(128, 256),
+#             nn.ReLU(),
+#             nn.BatchNorm1d(256),
+#             nn.Dropout(0.1),
+            
+#             nn.Linear(256, 512),
+#             nn.ReLU(),
+#             nn.LayerNorm(512),  # Layer normalization instead of batch norm for the last layer
+            
+#             nn.Linear(512, output_dim),
+#             # nn.LeakyReLU(0.1)  # LeakyReLU for output regression flexibility
+#         )
 
     def forward(self, x):
         return self.model(x)
@@ -146,7 +170,7 @@ def train_NN(model, checkpoint_path,
         
         if (epoch+1)%50 == 0:
             torch.save(model.state_dict(), checkpoint_path.replace('.pth', f'_epoch_{epoch+1}.pth'))
-            print(f"Model checkpoint saved at epoch {epoch+1}")
+            # print(f"Model checkpoint saved at epoch {epoch+1}")
         
         # Check for early stopping
         if patience_counter >= patience:
