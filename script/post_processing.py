@@ -6,6 +6,7 @@ import torch
 import matplotlib.pyplot as plt
 
 
+    
 def inverse_scaler_of_all_var(scaled_data: np.ndarray|list[np.ndarray], 
                        scaler: StandardScaler)->np.ndarray|list:
     
@@ -24,18 +25,19 @@ def inverse_scaler_of_all_var(scaled_data: np.ndarray|list[np.ndarray],
     Raises:
     TypeError: If the scaled_data is not a numpy array or a list of numpy arrays.
     """
+    num_of_features = len(scaler.var_)
     if isinstance(scaled_data, (np.ndarray|list)) is not True: 
         raise TypeError('scaled_data should be either np.ndarray or list of np.ndarray')
     if type(scaled_data) == np.ndarray:
         scaled_dim = scaled_data.shape
-        scaled_data = scaled_data.reshape(-1,  scaled_data.shape[-1])
+        scaled_data = scaled_data.reshape(-1,  num_of_features)
         original_data = scaler.inverse_transform(scaled_data)
         return original_data.reshape(scaled_dim)
     else:
         original_data_ensemble = []
         for scaled_data_element in scaled_data:
             scaled_dim = scaled_data_element.shape
-            scaled_data_element = scaled_data_element.reshape(-1,  scaled_data_element.shape[-1])
+            scaled_data_element = scaled_data_element.reshape(-1,  num_of_features)
             original_data_element = scaler.inverse_transform(scaled_data_element)
             original_data_ensemble.append(original_data_element.reshape(scaled_dim))
         return original_data_ensemble
@@ -178,7 +180,8 @@ def resursive_furture_prediction_with_dropout_in_cpu(model,
                                             scaler: None | StandardScaler = None,
                                             train_test_split_date = None, 
                                             df_all = None,
-                                            return_contious_array:bool = True):
+                                            return_contious_array:bool = True,
+                                            flatten: bool = False):
     """
     Recursive future prediction with dropout.
 
@@ -202,9 +205,15 @@ def resursive_furture_prediction_with_dropout_in_cpu(model,
         future_price = []
         for iter in range(future_period):
             if iter == 0:
-                next_price = model(last_price_all.reshape(1,input_data_time_length,-1).cpu())
+                if flatten == False:
+                    next_price = model(last_price_all.reshape(1,input_data_time_length,-1).cpu())
+                else:
+                    next_price = model(last_price_all.reshape(1,-1).repeat(2,1).cpu())[0]
             else:
-                next_price = model(next_price)
+                if flatten == False:
+                    next_price = model(next_price)
+                else:
+                    next_price = model(next_price.reshape(1,-1).repeat(2,1))[0]
             future_price.append(next_price.detach().numpy())
         if scaler is not None:
             future_price = inverse_scaler_of_all_var(future_price, scaler)
